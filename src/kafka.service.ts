@@ -51,15 +51,13 @@ export class KafkaService implements OnModuleInit {
               console.log(
                 '[KafkaService] Attempting to insert data into Supabase...',
               );
-              const { error } = await this.supabase
-                .from('moisture_data')
-                .insert([
-                  {
-                    name: parsedMessage.name,
-                    moisture_pct: parsedMessage.moisture_pct,
-                    status_msg: parsedMessage.status_msg,
-                  },
-                ]);
+              const { error } = await this.supabase.from('plant_table').insert([
+                {
+                  name: parsedMessage.name,
+                  moisture_pct: parsedMessage.moisture_pct,
+                  status_msg: parsedMessage.status_msg,
+                },
+              ]);
 
               if (error) {
                 console.error(
