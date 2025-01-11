@@ -11,7 +11,7 @@ export class KafkaService implements OnModuleInit {
   constructor() {
     this.kafka = new Kafka({
       clientId: 'nestjs-consumer',
-      brokers: [process.env.KAFKA_BROKER || 'kafka:9092'],
+      brokers: [process.env.KAFKA_BROKER || 'kafka:9092'], // Ensure the broker URL is correct
     });
 
     this.supabase = createClient(
@@ -47,26 +47,42 @@ export class KafkaService implements OnModuleInit {
 
               console.log('[KafkaService] Parsed message:', parsedMessage);
 
-              // Insert data into Supabase
+              // Validate the parsed message fields
+              if (
+                !parsedMessage.name ||
+                typeof parsedMessage.moisture_pct !== 'number' ||
+                !parsedMessage.status_msg
+              ) {
+                throw new Error(
+                  'Invalid message format. Missing required fields.',
+                );
+              }
+
+              // Upsert data into Supabase
               console.log(
-                '[KafkaService] Attempting to insert data into Supabase...',
+                '[KafkaService] Attempting to upsert data into Supabase...',
               );
-              const { error } = await this.supabase.from('plant_table').insert([
-                {
-                  name: parsedMessage.name,
-                  moisture_pct: parsedMessage.moisture_pct,
-                  status_msg: parsedMessage.status_msg,
-                },
-              ]);
+              const { error } = await this.supabase
+                .from('plant_table') // Replace with your actual table name
+                .upsert(
+                  [
+                    {
+                      name: parsedMessage.name, // Unique identifier for conflict resolution
+                      moisture_pct: parsedMessage.moisture_pct,
+                      status_msg: parsedMessage.status_msg,
+                    },
+                  ],
+                  { onConflict: 'name' }, // Use the 'name' column for conflict resolution
+                );
 
               if (error) {
                 console.error(
-                  '[KafkaService] Error inserting data into Supabase:',
+                  '[KafkaService] Error upserting data into Supabase:',
                   error.message,
                 );
               } else {
                 console.log(
-                  '[KafkaService] Data inserted into Supabase successfully.',
+                  '[KafkaService] Data upserted into Supabase successfully.',
                 );
               }
             } catch (err) {
